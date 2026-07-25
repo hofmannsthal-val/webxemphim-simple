@@ -4,60 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>K-Drama List & Links</title>
-    <style>
-        :root {
-            --primary: #ff6b6b;
-            --bg: #f8f9fa;
-            --card-bg: #ffffff;
-            --text: #333333;
-            --text-light: #888888;
-            --border: #e9ecef;
-            --link-color: #4dabf7;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-
-        body { background-color: var(--bg); color: var(--text); padding: 20px; max-width: 600px; margin: 0 auto; }
-
-        header { text-align: center; margin-bottom: 20px; }
-        h1 { font-size: 1.5rem; color: var(--primary); margin-bottom: 5px; }
-        p { font-size: 12px; color: var(--text-light); }
-
-        /* Input Section */
-        .input-group { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .input-row { display: flex; gap: 10px; margin-bottom: 10px; }
-        .input-row:last-child { margin-bottom: 0; }
-        
-        input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; outline: none; }
-        input:focus { border-color: var(--primary); }
-        
-        button#add-btn { background-color: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 24px; }
-
-        /* List Section */
-        ul { list-style: none; }
-        li { background: var(--card-bg); padding: 15px; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 10px; }
-        
-        .movie-header { display: flex; justify-content: space-between; align-items: flex-start; }
-        .movie-title { font-weight: 600; font-size: 16px; display: block; }
-        .movie-link-display { font-size: 12px; color: var(--link-color); text-decoration: none; word-break: break-all; display: block; margin-top: 4px; }
-        .movie-link-display:visited { color: #845ef7; }
-        
-        .actions { display: flex; gap: 10px; align-items: center; margin-top: 5px; }
-        
-        /* Buttons */
-        .btn-watch { background-color: var(--link-color); color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; flex: 1; }
-        .btn-status { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: transparent; flex-shrink: 0; }
-        .btn-status.completed { background-color: #51cf66; border-color: #51cf66; color: white; }
-        .btn-delete { background: none; border: none; color: #ff8787; cursor: pointer; font-size: 18px; padding: 5px; }
-
-        .empty-state { text-align: center; color: var(--text-light); margin-top: 40px; font-style: italic; }
-        
-        /* Mobile tweak */
-        @media (max-width: 400px) {
-            .input-row { flex-direction: column; }
-            button#add-btn { padding: 12px; font-size: 18px; }
-        }
-    </style>
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
@@ -66,126 +13,24 @@
         <p>Lưu tên phim & Link từ Nguonc</p>
     </header>
 
-    <div class="input-group">
+    <form id="movie-form" class="input-group" novalidate>
         <div class="input-row">
-            <input type="text" id="movie-title" placeholder="Tên phim (VD: Nàng thơ)">
+            <label class="sr-only" for="movie-title">Tên phim</label>
+            <input type="text" id="movie-title" placeholder="Tên phim (VD: Nàng thơ)" maxlength="200" required autocomplete="off">
         </div>
         <div class="input-row">
-            <input type="url" id="movie-link" placeholder="Dán link phim từ nguonc.com vào đây">
+            <label class="sr-only" for="movie-link">Liên kết phim</label>
+            <input type="text" id="movie-link" inputmode="url" placeholder="Dán link phim từ nguonc.com vào đây" autocomplete="url">
         </div>
-        <div class="input-row" style="margin-top: 10px;">
-            <button id="add-btn" style="width: 100%;">+ Thêm Phim</button>
+        <div class="input-row input-submit-row">
+            <button id="add-btn" type="submit">+ Thêm Phim</button>
         </div>
-    </div>
+        <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+    </form>
 
-    <ul id="movie-list"></ul>
-    <div id="empty-msg" class="empty-state" style="display: none;">Chưa có phim nào.</div>
+    <ul id="movie-list" aria-label="Danh sách phim"></ul>
+    <div id="empty-msg" class="empty-state" hidden>Chưa có phim nào.</div>
 
-    <script>
-        let movies = JSON.parse(localStorage.getItem('kdramaList_v2')) || [];
-
-        const titleInput = document.getElementById('movie-title');
-        const linkInput = document.getElementById('movie-link');
-        const addBtn = document.getElementById('add-btn');
-        const list = document.getElementById('movie-list');
-        const emptyMsg = document.getElementById('empty-msg');
-
-        function saveLocal() {
-            localStorage.setItem('kdramaList_v2', JSON.stringify(movies));
-        }
-
-        function addMovie() {
-            const title = titleInput.value.trim();
-            let link = linkInput.value.trim();
-
-            if (!title) {
-                alert("Vui lòng nhập tên phim!");
-                return;
-            }
-
-            // Tự động thêm https:// nếu người dùng quên
-            if (link && !link.startsWith('http')) {
-                link = 'https://' + link;
-            }
-
-            const newMovie = {
-                id: Date.now(),
-                title: title,
-                link: link || '#',
-                completed: false,
-                date: new Date().toLocaleDateString('vi-VN')
-            };
-
-            movies.unshift(newMovie);
-            saveLocal();
-            render();
-            
-            // Reset inputs
-            titleInput.value = '';
-            linkInput.value = '';
-            titleInput.focus();
-        }
-
-        function deleteMovie(id) {
-            if(confirm('Xóa phim này?')) {
-                movies = movies.filter(m => m.id !== id);
-                saveLocal();
-                render();
-            }
-        }
-
-        function toggleStatus(id) {
-            movies = movies.map(m => m.id === id ? { ...m, completed: !m.completed } : m);
-            saveLocal();
-            render();
-        }
-
-        function render() {
-            list.innerHTML = '';
-            if (movies.length === 0) {
-                emptyMsg.style.display = 'block';
-                return;
-            }
-            emptyMsg.style.display = 'none';
-
-            movies.forEach(movie => {
-                const li = document.createElement('li');
-                const linkDisplay = movie.link && movie.link !== '#' 
-                    ? `<a href="${movie.link}" target="_blank" class="movie-link-display">🔗 ${movie.link}</a>` 
-                    : '<span class="movie-link-display" style="color:#ccc; font-style:italic;">Chưa có link</span>';
-                
-                const btnWatch = movie.link && movie.link !== '#'
-                    ? `<a href="${movie.link}" target="_blank" class="btn-watch">▶ Xem Phim</a>`
-                    : `<button class="btn-watch" style="background:#ccc; cursor:not-allowed;" disabled>Chưa có link</button>`;
-
-                li.innerHTML = `
-                    <div class="movie-header">
-                        <div style="flex:1;">
-                            <span class="movie-title" style="${movie.completed ? 'text-decoration: line-through; color: #888;' : ''}">${movie.title}</span>
-                            ${linkDisplay}
-                        </div>
-                    </div>
-                    <div class="actions">
-                        ${btnWatch}
-                        <button class="btn-status ${movie.completed ? 'completed' : ''}" onclick="toggleStatus(${movie.id})">✓</button>
-                        <button class="btn-delete" onclick="deleteMovie(${movie.id})">✕</button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        addBtn.addEventListener('click', addMovie);
-        
-        // Allow Enter key to submit
-        linkInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') addMovie();
-        });
-        titleInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') linkInput.focus();
-        });
-
-        render();
-    </script>
+    <script src="/app.js" defer></script>
 </body>
 </html>   
